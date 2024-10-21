@@ -1,0 +1,102 @@
+version: '3.8'
+
+services:
+  pickmycardserver:
+    build:
+      context: ./PickMyCardServer
+      dockerfile: Dockerfile
+    ports:
+      - "8761:8761"
+    networks:
+      pickmycard-network:
+        ipv4_address: 172.19.0.2
+
+  pickmycardclient-data:
+    build:
+      context: ./PickMyCardClient-data
+      dockerfile: Dockerfile
+    ports:
+      - "8030:8030"
+    networks:
+      pickmycard-network:
+        ipv4_address: 172.19.0.8
+
+  pickmycardclient-user:
+    build:
+      context: ./PickMyCardClient-user
+      dockerfile: Dockerfile
+    ports:
+      - "8020:8020"
+    environment:
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://pickmycardserver:8761/eureka/
+    depends_on:
+      - pickmycardserver
+    networks:
+      pickmycard-network:
+        ipv4_address: 172.19.0.3
+
+  pickmycardclient-card:
+    build:
+      context: ./PickMyCardClient-card
+      dockerfile: Dockerfile
+    ports:
+      - "8015:8015"
+    environment:
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://pickmycardserver:8761/eureka/
+    depends_on:
+      - pickmycardserver
+    networks:
+      pickmycard-network:
+        ipv4_address: 172.19.0.4
+
+  pickmycardclientapigateway:
+    build:
+      context: ./PickMyCardClientAPIGateway
+      dockerfile: Dockerfile
+    ports:
+      - "9001:9001"
+    environment:
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://pickmycardserver:8761/eureka/
+      - FALLBACK_HOST=pickmycardclientapigateway
+    depends_on:
+      - pickmycardserver
+      - pickmycardclient-user
+      - pickmycardclient-card
+    networks:
+      pickmycard-network:
+        ipv4_address: 172.19.0.5
+  prometheus:
+    image: prom/prometheus:v2.30.3
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    networks:
+      pickmycard-network:
+        ipv4_address: 172.19.0.6
+
+  grafana:
+    image: grafana/grafana:8.2.2
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana-storage:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      pickmycard-network:
+        ipv4_address: 172.19.0.7
+
+networks:
+  pickmycard-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.19.0.0/16
+
+volumes:
+  grafana-storage:

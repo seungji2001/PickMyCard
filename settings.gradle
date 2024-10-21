@@ -1,0 +1,2 @@
+rootProject.name = 'PickMyCardMsa'
+include 'PickMyCardServer', 'PickMyCardClient-card', 'PickMyCardClient-user', 'PickMyCardClientAPIGateway', 'PickMyCardClient-data'
